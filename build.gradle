@@ -1,0 +1,27 @@
+plugins {
+	id 'java'
+	id 'eclipse'
+}
+
+repositories {
+	mavenLocal()
+	mavenCentral()
+}
+
+dependencies {
+	compile 'org.apache.logging.log4j:log4j-api:2.10.0'
+	compile 'org.apache.logging.log4j:log4j-core:2.10.0'
+	compile 'com.google.guava:guava:24.0-jre'
+	compile 'org.jgrapht:jgrapht-core:1.1.0'
+}
+
+eclipse {
+	classpath {
+		downloadSources = true
+		downloadJavadoc = true
+	}
+}
+
+compileJava {
+	options.encoding = 'UTF-8'
+}
