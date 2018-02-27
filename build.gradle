@@ -25,3 +25,8 @@ eclipse {
 compileJava {
 	options.encoding = 'UTF-8'
 }
+
+task testRun(type: JavaExec) {
+	main = "udentric.crank.TestApp"
+	classpath = sourceSets.test.runtimeClasspath
+}

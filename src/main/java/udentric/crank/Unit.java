@@ -16,42 +16,77 @@
 
 package udentric.crank;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.lang.invoke.MethodHandles.Lookup;
+import com.google.common.collect.SetMultimap;
 import java.lang.reflect.Constructor;
-import java.util.ArrayList;
+import java.util.*;
 
 class Unit {
-	Unit(
-		Class<?> cls_, Constructor<?> ctor, DependencyTracker deps
-	) throws ReflectiveOperationException {
-		cls = cls_;
-		Lookup l = MethodHandles.lookup();
-		constructor = l.unreflectConstructor(ctor);
-
-		start = findLifecycleMethod(l, "start");
-		stop = findLifecycleMethod(l, "stop");
-
-		constructorArgs  = ctor.getParameterTypes();
-		for (Class<?> p: constructorArgs)
-			deps.addDependency(this, p);
+	Unit(Object obj) {
+		this(obj.getClass());
+		value = obj;
 	}
 
-	private MethodHandle findLifecycleMethod(Lookup l, String name) {
-		try {
-			return l.findVirtual(
-				cls, name, MethodType.methodType(void.class)
-			);
-		} catch (ReflectiveOperationException e) {
-			return null;
+	Unit(Class<?> cls) {
+		primaryType = cls;
+
+		if (cls.isArray())
+			return;
+
+		Class<?> other = cls.getSuperclass();
+		if (other != null) {
+			int badness = 1;
+
+			while (other != Object.class) {
+				providedTypes.put(other, badness);
+				badness++;
+				other = other.getSuperclass();
+			}
+			listAndSortConstructors();
+		}
+
+		appendInterfaces(cls.getInterfaces(), 1);
+	}
+
+	private void appendInterfaces(Class<?>[] clss, int badness) {
+		for (Class<?> cls: clss) {
+			providedTypes.put(cls, badness);
+			appendInterfaces(cls.getInterfaces(), badness + 1);
 		}
 	}
 
-	final Class<?> cls;
-	final MethodHandle constructor;
-	final MethodHandle start;
-	final MethodHandle stop;
-	final Class<?>[] constructorArgs;
+	void addToClassMap(SetMultimap<Class<?>, Unit> classMap) {
+		classMap.put(primaryType, this);
+		providedTypes.forEach((k, v) -> classMap.put(k, this));
+	}
+
+	private void listAndSortConstructors() {
+		for (Constructor<?> ctor: primaryType.getConstructors()) {
+			if (ctor.getParameterCount() == 0)
+				continue;
+
+			for (Class<?> cls: ctor.getParameterTypes()) {
+				neededTypes.add(cls);
+			}
+
+			ctors.add(ctor);
+		}
+
+		Collections.sort(ctors, Collections.reverseOrder(
+			Comparator.comparingInt(
+				Constructor::getParameterCount
+			)
+		));
+	}
+
+	HashSet<Class<?>> neededTypes() {
+		return neededTypes;
+	}
+
+	private final Class<?> primaryType;
+	private final HashMap<
+		Class<?>, Integer
+	> providedTypes = new HashMap<>();
+	private final HashSet<Class<?>> neededTypes = new HashSet<>();
+	private final ArrayList<Constructor<?>> ctors = new ArrayList<>();
+	private Object value;
 }

@@ -16,5 +16,66 @@
 
 package udentric.crank;
 
-public class Context {
+import com.google.common.collect.MultimapBuilder;
+import com.google.common.collect.SetMultimap;
+import org.jgrapht.graph.DefaultDirectedWeightedGraph;
+import org.jgrapht.graph.DefaultWeightedEdge;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+
+public class Context implements AutoCloseable {
+	Context() {
+	}
+
+	@Override
+	public void close() {
+		stop();
+	}
+
+	public Context start(Class<?>... clss) {
+		for (Class<?> cls: clss) {
+			Unit u = new Unit(cls);
+			u.addToClassMap(classToUnitMap);
+			targets.add(u);
+			depGraph.addVertex(u);
+			allNeeded.addAll(u.neededTypes());
+		}
+
+		return this;
+	}
+
+	public void stop() {
+
+	}
+
+	void appendExisting(Object[] objs) {
+		for (Object obj: objs) {
+			Unit u = new Unit(obj);
+			u.addToClassMap(classToUnitMap);
+			depGraph.addVertex(u);
+		}
+	}
+
+	private void addTargetEdges(Unit u) {
+		u.neededTypes().forEach(cls -> {
+			Set<Unit> deps = classToUnitMap.get(cls);
+			if (deps.isEmpty()) {
+
+			}
+
+		});
+	}
+
+	private final SetMultimap<
+		Class<?>, Unit
+	> classToUnitMap = MultimapBuilder.SetMultimapBuilder
+		.hashKeys().hashSetValues().build();
+	private final DefaultDirectedWeightedGraph<
+		Unit, DefaultWeightedEdge
+	> depGraph = new DefaultDirectedWeightedGraph<>(
+		DefaultWeightedEdge.class
+	);
+	private final ArrayList<Unit> targets = new ArrayList<>();
+	private final HashSet<Class<?>> allNeeded = new HashSet<>();
 }

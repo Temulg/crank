@@ -17,14 +17,12 @@
 package udentric.crank;
 
 public class Crank {
-	public Crank(Class<?>... cls) {
+	private Crank() {
 	}
 
-	public Crank add(Class<?>... cls) {
-		return this;
-	}
-
-	public Context start(Class<?>... cls) {
-		return new Context();
+	public static Context with(Object... objs) {
+		Context ctx = new Context();
+		ctx.appendExisting(objs);
+		return ctx;
 	}
 }
