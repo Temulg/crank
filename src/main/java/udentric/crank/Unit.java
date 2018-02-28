@@ -16,77 +16,125 @@
 
 package udentric.crank;
 
-import com.google.common.collect.SetMultimap;
+import com.google.common.base.MoreObjects;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableTable;
 import java.lang.reflect.Constructor;
-import java.util.*;
+import java.lang.reflect.Parameter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 class Unit {
 	Unit(Object obj) {
-		this(obj.getClass());
+		cls = obj.getClass();
+		ctors = ImmutableList.<Constructor<?>>builder().build();
+		ctorArgs = ImmutableTable.<
+			Integer, Integer, ClassRequirement
+		>builder().build();
 		value = obj;
 	}
 
-	Unit(Class<?> cls) {
-		primaryType = cls;
+	Unit(Class<?> cls_) {
+		if (cls_.isArray() || null == cls_.getSuperclass())
+			throw new IllegalArgumentException(String.format(
+				"Class %s is not an object class", cls_
+			));
 
-		if (cls.isArray())
-			return;
+		cls = cls_;
 
-		Class<?> other = cls.getSuperclass();
-		if (other != null) {
-			int badness = 1;
+		ImmutableList.Builder<
+			Constructor<?>
+		> lb = ImmutableList.builder();
+		ImmutableTable.Builder<
+			Integer, Integer, ClassRequirement
+		> tb = ImmutableTable.builder();
 
-			while (other != Object.class) {
-				providedTypes.put(other, badness);
-				badness++;
-				other = other.getSuperclass();
+		int row = 0;
+		for (Constructor<?> ctor: sortConstructors()) {
+			lb.add(ctor);
+			int col = 0;
+			for (Parameter p: ctor.getParameters()) {
+				tb.put(
+					row, col,
+					new ClassRequirement(p.getType())
+				);
+				col++;
 			}
-			listAndSortConstructors();
+			row++;
 		}
 
-		appendInterfaces(cls.getInterfaces(), 1);
+		ctors = lb.build();
+		ctorArgs = tb.build();
 	}
 
-	private void appendInterfaces(Class<?>[] clss, int badness) {
-		for (Class<?> cls: clss) {
-			providedTypes.put(cls, badness);
-			appendInterfaces(cls.getInterfaces(), badness + 1);
+	void collectOfferings(OfferingSet s) {
+		s.addClassOffering(new ClassOffering(this, cls));
+
+		Class<?> sc = cls.getSuperclass();
+
+		int badness = 1;
+
+		while (sc != Object.class) {
+			s.addClassOffering(
+				new AbstractClassOffering(this, sc, badness)
+			);
+			badness++;
+			sc = sc.getSuperclass();
+		}
+
+		collectInterfaces(s, cls.getInterfaces(), 1);
+	}
+
+	private void collectInterfaces(
+		OfferingSet s, Class<?>[] ifaces, int badness
+	) {
+		for (Class<?> iface: ifaces) {
+			s.addClassOffering(new AbstractClassOffering(
+				this, iface, badness
+			));
+			collectInterfaces(
+				s, iface.getInterfaces(), badness + 1
+			);
 		}
 	}
 
-	void addToClassMap(SetMultimap<Class<?>, Unit> classMap) {
-		classMap.put(primaryType, this);
-		providedTypes.forEach((k, v) -> classMap.put(k, this));
+	void collectRequirements(List<Requirement> rl) {
+		ctorArgs.cellSet().forEach(c -> rl.add(c.getValue()));
 	}
 
-	private void listAndSortConstructors() {
-		for (Constructor<?> ctor: primaryType.getConstructors()) {
+	@Override
+	public String toString() {
+		return MoreObjects.toStringHelper(this).add(
+			"Class", cls
+		).add(
+			"hasValue", value != null
+		).toString();
+	}
+
+	private ArrayList<Constructor<?>> sortConstructors() {
+		ArrayList<Constructor<?>> rv = new ArrayList<>();
+
+		for (Constructor<?> ctor: cls.getConstructors()) {
 			if (ctor.getParameterCount() == 0)
 				continue;
 
-			for (Class<?> cls: ctor.getParameterTypes()) {
-				neededTypes.add(cls);
-			}
-
-			ctors.add(ctor);
+			rv.add(ctor);
 		}
 
-		Collections.sort(ctors, Collections.reverseOrder(
+		Collections.sort(rv, Collections.reverseOrder(
 			Comparator.comparingInt(
 				Constructor::getParameterCount
 			)
 		));
+		return rv;
 	}
 
-	HashSet<Class<?>> neededTypes() {
-		return neededTypes;
-	}
-
-	private final Class<?> primaryType;
-	private final HashMap<
-		Class<?>, Integer
-	> providedTypes = new HashMap<>();
-	private final HashSet<Class<?>> neededTypes = new HashSet<>();
-	private final ArrayList<Constructor<?>> ctors = new ArrayList<>();
+	final Class<?> cls;
+	private final ImmutableList<Constructor<?>> ctors;
+	private final ImmutableTable<
+		Integer, Integer, ClassRequirement
+	> ctorArgs;
 	private Object value;
 }

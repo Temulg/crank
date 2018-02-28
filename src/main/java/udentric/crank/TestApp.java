@@ -48,7 +48,7 @@ public class TestApp {
 		public G(F f, E e) {}
 	}
 
-	public static void main(String... args) {
+	public static void main(String... args) throws Exception {
 		Logger logger = configLog();
 		Message m = logger.traceEntry("before crank");
 
