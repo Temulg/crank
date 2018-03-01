@@ -19,11 +19,16 @@ package udentric.crank;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableTable;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 
 class Unit {
@@ -43,6 +48,7 @@ class Unit {
 			));
 
 		cls = cls_;
+		value = null;
 
 		ImmutableList.Builder<
 			Constructor<?>
@@ -129,6 +135,52 @@ class Unit {
 			)
 		));
 		return rv;
+	}
+
+	int selectConstructor(OfferingSet offSet) {
+		int count = ctors.size();
+
+		nextCtor: for (int pos = 0; pos < count; pos++) {
+			for (ClassRequirement cr: ctorArgs.row(pos).values()) {
+				if (!offSet.satisfy(cr))
+					continue nextCtor;
+			}
+			return pos;
+		}
+
+		return -1;
+	}
+
+	Object value() {
+		return value;
+	}
+
+	Object makeValue(int variant) throws Throwable {
+		if (value != null)
+			return value;
+
+		MethodHandle h = MethodHandles.lookup().unreflectConstructor(
+			ctors.get(variant)
+		);
+
+		Object[] pReqs = ctorArgs.row(
+			variant
+		).values().toArray();
+		Object[] args = new Object[pReqs.length];
+		for (int pos = 0; pos < pReqs.length; pos++) {
+			ClassRequirement cr = (ClassRequirement)pReqs[pos];
+			Unit ru = cr.getReferred();
+
+			if (ru == null || ru.value() == null)
+				throw new IllegalStateException(
+					"uresolved dependency in unit " + this
+				);
+
+			args[pos] = ru.value();
+		}
+
+		value = h.invokeWithArguments(args);
+		return value;
 	}
 
 	final Class<?> cls;

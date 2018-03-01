@@ -52,13 +52,13 @@ public class TestApp {
 		Logger logger = configLog();
 		Message m = logger.traceEntry("before crank");
 
-		Context ctx = Crank.with(
+		ActivationSet as = Crank.with(
 			new A(), new B(), new C()
 		).start(F.class, G.class);
 
 		logger.info("crank started");
 
-		ctx.close();
+		as.close();
 
 		logger.traceExit("after crank");
 	}
