@@ -45,7 +45,10 @@ public class TestApp {
 	}
 
 	static class G {
-		public G(F f, E e) {}
+		public G(F f, E e, H h) {}
+	}
+
+	static class H {
 	}
 
 	public static void main(String... args) throws Exception {
@@ -54,7 +57,12 @@ public class TestApp {
 
 		ActivationSet as = Crank.with(
 			new A(), new B(), new C()
-		).start(F.class, G.class);
+		).withSuppliers(new Object() {
+			@CrankSupplier
+			public H make(B b) {
+				return new H();
+			}
+		}).start(F.class, G.class);
 
 		logger.info("crank started");
 

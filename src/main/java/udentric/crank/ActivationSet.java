@@ -19,7 +19,6 @@ package udentric.crank;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 public class ActivationSet implements AutoCloseable {
@@ -67,7 +66,7 @@ public class ActivationSet implements AutoCloseable {
 
 	private boolean constructObject(ValidationSet.Entry entry) {
 		try {
-			Object obj = entry.unit.makeValue(entry.variant);
+			Object obj = entry.unit.obtainValue(entry.variant);
 			objs.add(obj);
 			Crank.LOGGER.debug("activation set: added {}", obj);
 			return true;
@@ -76,8 +75,8 @@ public class ActivationSet implements AutoCloseable {
 				throw (Error)e;
 
 			Crank.LOGGER.error(
-				"exception constructing object of class {}",
-				entry.unit.cls, e
+				"exception obtaining value from unit {} (var {})",
+				entry.unit, entry.variant, e
 			);
 			ex = (Exception)e;
 			return false;

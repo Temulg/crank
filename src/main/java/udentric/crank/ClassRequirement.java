@@ -34,7 +34,7 @@ class ClassRequirement implements Requirement {
 		if (cls.isArray() || null == cls.getSuperclass())
 			return null;
 
-		return new Unit(cls);
+		return new ClassUnit(cls);
 	}
 
 	@Override

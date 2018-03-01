@@ -16,66 +16,21 @@
 
 package udentric.crank;
 
-import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableTable;
-
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Parameter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
-class Unit {
-	Unit(Object obj) {
-		cls = obj.getClass();
-		ctors = ImmutableList.<MethodHandle>builder().build();
-		ctorArgs = ImmutableTable.<
-			Integer, Integer, ClassRequirement
-		>builder().build();
-		value = obj;
-	}
+interface Unit {
+	void collectOfferings(OfferingSet offSet);
 
-	Unit(Class<?> cls_) throws ReflectiveOperationException {
-		if (cls_.isArray() || null == cls_.getSuperclass())
-			throw new IllegalArgumentException(String.format(
-				"Class %s is not an object class", cls_
-			));
+	void collectRequirements(List<Requirement> rl);
 
-		cls = cls_;
-		value = null;
+	int selectVariant(OfferingSet offSet);
 
-		ImmutableList.Builder<
-			MethodHandle
-		> lb = ImmutableList.builder();
-		ImmutableTable.Builder<
-			Integer, Integer, ClassRequirement
-		> tb = ImmutableTable.builder();
+	Object getValue();
 
-		MethodHandles.Lookup l = MethodHandles.lookup();
-		int row = 0;
-		for (Constructor<?> ctor: sortConstructors()) {
-			lb.add(l.unreflectConstructor(ctor));
-			int col = 0;
-			for (Parameter p: ctor.getParameters()) {
-				tb.put(
-					row, col,
-					new ClassRequirement(p.getType())
-				);
-				col++;
-			}
-			row++;
-		}
+	Object obtainValue(int variant) throws Throwable;
 
-		ctors = lb.build();
-		ctorArgs = tb.build();
-	}
-
-	void collectOfferings(OfferingSet s) {
-		s.addClassOffering(new ClassOffering(this, cls));
+	static void collectOfferings(OfferingSet s, Class<?> cls, Unit self) {
+		s.addClassOffering(new ClassOffering(self, cls));
 
 		Class<?> sc = cls.getSuperclass();
 
@@ -83,107 +38,25 @@ class Unit {
 
 		while (sc != Object.class) {
 			s.addClassOffering(
-				new AbstractClassOffering(this, sc, badness)
+				new AbstractClassOffering(self, sc, badness)
 			);
 			badness++;
 			sc = sc.getSuperclass();
 		}
 
-		collectInterfaces(s, cls.getInterfaces(), 1);
+		collectInterfaces(s, cls.getInterfaces(), 1, self);
 	}
 
-	private void collectInterfaces(
-		OfferingSet s, Class<?>[] ifaces, int badness
+	private static void collectInterfaces(
+		OfferingSet s, Class<?>[] ifaces, int badness, Unit self
 	) {
 		for (Class<?> iface: ifaces) {
 			s.addClassOffering(new AbstractClassOffering(
-				this, iface, badness
+				self, iface, badness
 			));
 			collectInterfaces(
-				s, iface.getInterfaces(), badness + 1
+				s, iface.getInterfaces(), badness + 1, self
 			);
 		}
 	}
-
-	void collectRequirements(List<Requirement> rl) {
-		ctorArgs.cellSet().forEach(c -> rl.add(c.getValue()));
-	}
-
-	@Override
-	public String toString() {
-		return MoreObjects.toStringHelper(this).add(
-			"Class", cls
-		).add(
-			"hasValue", value != null
-		).toString();
-	}
-
-	private ArrayList<Constructor<?>> sortConstructors() {
-		ArrayList<Constructor<?>> rv = new ArrayList<>();
-
-		for (Constructor<?> ctor: cls.getConstructors()) {
-			if (ctor.getParameterCount() == 0)
-				continue;
-
-			rv.add(ctor);
-		}
-
-		Collections.sort(rv, Collections.reverseOrder(
-			Comparator.comparingInt(
-				Constructor::getParameterCount
-			)
-		));
-		return rv;
-	}
-
-	int selectConstructor(OfferingSet offSet) {
-		int count = ctors.size();
-
-		nextCtor: for (int pos = 0; pos < count; pos++) {
-			for (ClassRequirement cr: ctorArgs.row(pos).values()) {
-				if (!offSet.satisfy(cr))
-					continue nextCtor;
-			}
-			return pos;
-		}
-
-		return -1;
-	}
-
-	Object value() {
-		return value;
-	}
-
-	Object makeValue(int variant) throws Throwable {
-		if (value != null)
-			return value;
-
-		MethodHandle h = ctors.get(variant);
-
-		Object[] pReqs = ctorArgs.row(
-			variant
-		).values().toArray();
-		Object[] args = new Object[pReqs.length];
-		for (int pos = 0; pos < pReqs.length; pos++) {
-			ClassRequirement cr = (ClassRequirement)pReqs[pos];
-			Unit ru = cr.getReferred();
-
-			if (ru == null || ru.value() == null)
-				throw new IllegalStateException(
-					"uresolved dependency in unit " + this
-				);
-
-			args[pos] = ru.value();
-		}
-
-		value = h.invokeWithArguments(args);
-		return value;
-	}
-
-	final Class<?> cls;
-	private final ImmutableList<MethodHandle> ctors;
-	private final ImmutableTable<
-		Integer, Integer, ClassRequirement
-	> ctorArgs;
-	private Object value;
 }

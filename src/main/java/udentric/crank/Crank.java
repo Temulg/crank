@@ -17,8 +17,6 @@
 package udentric.crank;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.ListIterator;
 
 import org.apache.logging.log4j.LogManager;
@@ -36,19 +34,27 @@ public class Crank {
 		return cr;
 	}
 
-	public ActivationSet start(Class<?>... clss) throws Exception {
-		LinkedList<Requirement> rl = new LinkedList<>();
+	public Crank withSuppliers(Object... sups) throws Exception {
+		for (Object sup: sups) {
+			SupplierUnit.inspectSupplierMethods(sup).forEach(u -> {
+				u.collectOfferings(offSet);
+				u.collectRequirements(reqSet);
+			});
+		}
+		return this;
+	}
 
+	public ActivationSet start(Class<?>... clss) throws Exception {
 		for (Class<?> cls: clss) {
-			Unit u = new Unit(cls);
+			Unit u = new ClassUnit(cls);
 			u.collectOfferings(offSet);
-			u.collectRequirements(rl);
+			u.collectRequirements(reqSet);
 			targets.add(u);
 		}
 
-		boolean newReqs = resolveOnce(rl);
+		boolean newReqs = resolveOnce();
 		while (newReqs)
-			newReqs = resolveOnce(rl);
+			newReqs = resolveOnce();
 
 		targets.forEach(this::updateDepGraph);
 
@@ -57,40 +63,51 @@ public class Crank {
 		return new ActivationSet(vs);
 	}
 
-	void appendExisting(Object[] objs) {
+	private void appendExisting(Object[] objs) {
 		for (Object obj: objs) {
-			Unit u = new Unit(obj);
+			Unit u = new ObjectUnit(obj);
 			u.collectOfferings(offSet);
 		}
 	}
 
-	private boolean resolveOnce(List<Requirement> rl) throws Exception {
-		ListIterator<Requirement> iter = rl.listIterator();
-		while (iter.hasNext()) {
-			Requirement r = iter.next();
-			if (offSet.satisfy(r)) {
-				iter.remove();
+	private boolean resolveOnce() throws Exception {
+		ArrayList<Requirement> nl = new ArrayList<>();
+
+		for (int pos = 0; pos < reqSet.size(); pos++) {
+			Requirement r = reqSet.get(pos);
+
+			if (r == null)
+				continue;
+
+			if (offSet.satisfy(r))
+				reqSet.set(pos, null);
+			else {
+				Unit u = r.makeUnit();
+				if (u != null) {
+					u.collectOfferings(offSet);
+					u.collectRequirements(nl);
+				}
 			}
 		}
 
-		ArrayList<Requirement> nl = new ArrayList<>();
+		if (nl.isEmpty())
+			return false;
 
-		iter = rl.listIterator();
-		while (iter.hasNext()) {
-			Requirement r = iter.next();
-			Unit u = r.makeUnit();
-			if (u == null)
+		int nlPos = 0;
+		for (int pos = 0; pos < reqSet.size(); pos++) {
+			if (reqSet.get(pos) != null)
 				continue;
 
-			u.collectOfferings(offSet);
-			u.collectRequirements(nl);
+			reqSet.set(pos, nl.get(nlPos));
+			nlPos++;
+			if (nlPos == nl.size())
+				return true;
 		}
 
-		if (!nl.isEmpty()) {
-			rl.addAll(nl);
-			return true;
-		} else
-			return false;
+		for (; nlPos < nl.size(); nlPos++)
+			reqSet.add(nl.get(nlPos));
+
+		return true;
 	}
 
 	private void updateDepGraph(Unit u) {
@@ -122,4 +139,5 @@ public class Crank {
 	);
 	private final ArrayList<Unit> targets = new ArrayList<>();
 	private final OfferingSet offSet = new OfferingSet();
+	private final ArrayList<Requirement> reqSet = new ArrayList<>();
 }

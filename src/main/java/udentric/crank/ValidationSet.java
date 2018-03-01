@@ -23,18 +23,18 @@ class ValidationSet {
 	ValidationSet(Iterator<Unit> iter) {
 		while (iter.hasNext()) {
 			Unit u = iter.next();
-			if (u.value() != null) {
+			if (u.getValue() != null) {
 				u.collectOfferings(offSet);
 				entries.add(new Entry(u, 0));
 				continue;
 			}
 
-			int variant = u.selectConstructor(offSet);
+			int variant = u.selectVariant(offSet);
 			if (variant < 0)
-				throw new IllegalStateException(String.format(
-					"Not enough prerequisites to construct object of %s",
-					u.cls
-				));
+				throw new IllegalStateException(
+					"Not enough prerequisites to instantiate unit "
+					+ u
+				);
 
 			u.collectOfferings(offSet);
 			entries.add(new Entry(u, variant));
