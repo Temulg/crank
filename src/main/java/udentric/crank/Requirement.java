@@ -17,7 +17,7 @@
 package udentric.crank;
 
 interface Requirement {
-	Unit makeUnit();
+	Unit makeUnit() throws Exception;
 
 	Unit getReferred();
 }

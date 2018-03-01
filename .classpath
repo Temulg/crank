@@ -7,6 +7,12 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="output" path="bin/default"/>
+	<classpathentry output="bin/test" kind="src" path="src/test/java">
+		<attributes>
+			<attribute name="gradle_scope" value="test"/>
+			<attribute name="gradle_used_by_scope" value="test"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-9/"/>
 	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-core/2.10.0/a2041b29bc3e761fba750c0df933cd48f76f5b3a/log4j-core-2.10.0-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-core/2.10.0/c90b597163cd28ab6d9687edd53db601b6ea75a1/log4j-core-2.10.0.jar">
 		<attributes>
@@ -75,6 +81,18 @@
 	<classpathentry sourcepath="/root/.m2/repository/org/apache/commons/commons-lang3/3.5/commons-lang3-3.5-sources.jar" kind="lib" path="/root/.m2/repository/org/apache/commons/commons-lang3/3.5/commons-lang3-3.5.jar">
 		<attributes>
 			<attribute name="gradle_used_by_scope" value="main,test"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/org.testng/testng/6.13.1/a2b77dfee647263d2c1010215441bfa3e28c4b9c/testng-6.13.1-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/org.testng/testng/6.13.1/2495393a0b4b7d7a4b49ea1f8516376f70f482c/testng-6.13.1.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/org.testng/testng/6.13.1/650be4af41d397eb818393068e03c595576cf1b9/testng-6.13.1-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="test"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry sourcepath="/root/.gradle/caches/modules-2/files-2.1/com.beust/jcommander/1.72/7ef123d5dfb6f839b41265648ff1be34982d50f8/jcommander-1.72-sources.jar" kind="lib" path="/root/.gradle/caches/modules-2/files-2.1/com.beust/jcommander/1.72/6375e521c1e11d6563d4f25a07ce124ccf8cd171/jcommander-1.72.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/root/.gradle/caches/modules-2/files-2.1/com.beust/jcommander/1.72/b04f3ee8f5e43fa3b162981b50bb72fe1acabb33/jcommander-1.72-javadoc.jar!/"/>
+			<attribute name="gradle_used_by_scope" value="test"/>
 		</attributes>
 	</classpathentry>
 </classpath>

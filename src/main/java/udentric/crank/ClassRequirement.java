@@ -30,7 +30,7 @@ class ClassRequirement implements Requirement {
 	}
 
 	@Override
-	public Unit makeUnit() {
+	public Unit makeUnit() throws ReflectiveOperationException {
 		if (cls.isArray() || null == cls.getSuperclass())
 			return null;
 

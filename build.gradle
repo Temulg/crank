@@ -14,6 +14,8 @@ dependencies {
 	compile 'com.google.guava:guava:24.0-jre'
 	compile 'org.jgrapht:jgrapht-core:1.1.0'
 	compile 'org.jgrapht:jgrapht-io:1.1.0'
+
+	testCompile 'org.testng:testng:6.13.1'
 }
 
 eclipse {
@@ -25,6 +27,10 @@ eclipse {
 
 compileJava {
 	options.encoding = 'UTF-8'
+}
+
+test {
+	useTestNG()
 }
 
 task testRun(type: JavaExec) {

@@ -25,23 +25,21 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 
 class Unit {
 	Unit(Object obj) {
 		cls = obj.getClass();
-		ctors = ImmutableList.<Constructor<?>>builder().build();
+		ctors = ImmutableList.<MethodHandle>builder().build();
 		ctorArgs = ImmutableTable.<
 			Integer, Integer, ClassRequirement
 		>builder().build();
 		value = obj;
 	}
 
-	Unit(Class<?> cls_) {
+	Unit(Class<?> cls_) throws ReflectiveOperationException {
 		if (cls_.isArray() || null == cls_.getSuperclass())
 			throw new IllegalArgumentException(String.format(
 				"Class %s is not an object class", cls_
@@ -51,15 +49,16 @@ class Unit {
 		value = null;
 
 		ImmutableList.Builder<
-			Constructor<?>
+			MethodHandle
 		> lb = ImmutableList.builder();
 		ImmutableTable.Builder<
 			Integer, Integer, ClassRequirement
 		> tb = ImmutableTable.builder();
 
+		MethodHandles.Lookup l = MethodHandles.lookup();
 		int row = 0;
 		for (Constructor<?> ctor: sortConstructors()) {
-			lb.add(ctor);
+			lb.add(l.unreflectConstructor(ctor));
 			int col = 0;
 			for (Parameter p: ctor.getParameters()) {
 				tb.put(
@@ -159,9 +158,7 @@ class Unit {
 		if (value != null)
 			return value;
 
-		MethodHandle h = MethodHandles.lookup().unreflectConstructor(
-			ctors.get(variant)
-		);
+		MethodHandle h = ctors.get(variant);
 
 		Object[] pReqs = ctorArgs.row(
 			variant
@@ -184,7 +181,7 @@ class Unit {
 	}
 
 	final Class<?> cls;
-	private final ImmutableList<Constructor<?>> ctors;
+	private final ImmutableList<MethodHandle> ctors;
 	private final ImmutableTable<
 		Integer, Integer, ClassRequirement
 	> ctorArgs;

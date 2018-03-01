@@ -64,7 +64,7 @@ public class Crank {
 		}
 	}
 
-	private boolean resolveOnce(List<Requirement> rl) {
+	private boolean resolveOnce(List<Requirement> rl) throws Exception {
 		ListIterator<Requirement> iter = rl.listIterator();
 		while (iter.hasNext()) {
 			Requirement r = iter.next();
