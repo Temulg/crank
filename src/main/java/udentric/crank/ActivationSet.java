@@ -16,13 +16,20 @@
 
 package udentric.crank;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.function.Function;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ActivationSet implements AutoCloseable {
-	ActivationSet(ValidationSet vs) throws Exception {
+	ActivationSet(
+		ValidationSet vs, ObjectActivator activator_,
+		Function<String, LogMessage> msgFactory_
+	) throws Exception {
+		activator = activator_;
+		msgFactory = msgFactory_;
 		for (ValidationSet.Entry entry: vs.entries) {
 			if (!constructObject(entry)) {
 				closeAll();
@@ -30,20 +37,20 @@ public class ActivationSet implements AutoCloseable {
 			}
 		}
 
-		MethodHandles.Lookup l = MethodHandles.lookup();
-
 		for (int pos = 0; pos < objs.size(); pos++) {
-			if (!startObj(objs.get(pos), l)) {
-				stopAll(pos - 1, l);
+			if (!startObj(objs.get(pos))) {
+				stopAll(pos - 1);
 				closeAll();
 				throw ex;
 			}
 		}
-		Crank.LOGGER.debug("activation sequence complete");
+		LOGGER.debug(() -> msgFactory.apply(
+			"activation sequence complete"
+		));
 	}
 
 	public void stop() {
-		stopAll(objs.size() - 1, MethodHandles.lookup());
+		stopAll(objs.size() - 1);
 		closeAll();
 	}
 
@@ -54,107 +61,55 @@ public class ActivationSet implements AutoCloseable {
 
 	private void closeAll() {
 		for (int pos = objs.size() - 1; pos >= 0; pos--)
-			closeObject(objs.get(pos));
+			activator.release(objs.get(pos));
 
 		objs.clear();
 	}
 
-	private void stopAll(int pos, MethodHandles.Lookup l) {
+	private void stopAll(int pos) {
 		for (; pos >= 0; pos--)
-			stopObject(objs.get(pos), l);
+			activator.stop(objs.get(pos));
 	}
 
 	private boolean constructObject(ValidationSet.Entry entry) {
 		try {
 			Object obj = entry.unit.obtainValue(entry.variant);
 			objs.add(obj);
-			Crank.LOGGER.debug("activation set: added {}", obj);
+			LOGGER.debug(() -> msgFactory.apply(
+				"object added to activation set"
+			).with("object", obj));
 			return true;
 		} catch (Throwable e) {
 			if (e instanceof Error)
 				throw (Error)e;
 
-			Crank.LOGGER.error(
-				"exception obtaining value from unit {} (var {})",
-				entry.unit, entry.variant, e
-			);
+			LOGGER.error(() -> msgFactory.apply(
+				"exception obtaining value from unit"
+			).with(
+				"unit", entry.unit
+			).with(
+				"variant", entry.variant
+			), e);
+
 			ex = (Exception)e;
 			return false;
 		}
 	}
 
-	private void closeObject(Object obj) {
-		if (obj instanceof AutoCloseable) {
-			try {
-				((AutoCloseable)obj).close();
-			} catch (Exception e) {
-				Crank.LOGGER.warn(
-					"exception closing object {}", obj, e
-				);
-			}
-		}
-	}
-
-	private boolean startObj(Object obj, MethodHandles.Lookup l) {
-		MethodHandle h;
-
+	private boolean startObj(Object obj) {
 		try {
-			h = l.findVirtual(
-				obj.getClass(), "start",
-				MethodType.methodType(void.class)
-			);
-		} catch (ReflectiveOperationException e) {
-			Crank.LOGGER.debug(
-				"object {} has no accessible start method",
-				obj
-			);
+			activator.start(obj);
 			return true;
-		}
-
-		try {
-			h.invoke(obj);
-		} catch (Throwable e) {
-			if (e instanceof Error)
-				throw (Error)e;
-
-			Crank.LOGGER.error(
-				"exception starting object {}", obj, e
-			);
-			ex = (Exception)e;
+		} catch (Exception e) {
+			ex = e;
 			return false;
 		}
-
-		return true;
 	}
 
-	private void stopObject(Object obj, MethodHandles.Lookup l) {
-		MethodHandle h = null;
-
-		try {
-			h = l.findVirtual(
-				obj.getClass(), "stop",
-				MethodType.methodType(void.class)
-			);
-		} catch (ReflectiveOperationException e) {
-			Crank.LOGGER.debug(
-				"object {} has no accessible stop method",
-				obj
-			);
-		}
-
-		try {
-			if (h != null)
-				h.invoke(obj);
-		} catch (Throwable e) {
-			if (e instanceof Error)
-				throw (Error)e;
-
-			Crank.LOGGER.warn(
-				"exception stopping object {}", obj, e
-			);
-		}
-	}
+	static private final Logger LOGGER = LogManager.getLogger();
 
 	private final ArrayList<Object> objs = new ArrayList<>();
+	private final ObjectActivator activator;
+	private final Function<String, LogMessage> msgFactory;
 	private Exception ex;
 }

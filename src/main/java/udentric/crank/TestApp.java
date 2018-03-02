@@ -16,6 +16,8 @@
 
 package udentric.crank;
 
+import java.util.Collections;
+
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -62,7 +64,9 @@ public class TestApp {
 			public H make(B b) {
 				return new H();
 			}
-		}).start(F.class, G.class);
+		}).withLoggerContext(
+			Collections.singletonMap("aaab", "snug")
+		).start(F.class, G.class);
 
 		logger.info("crank started");
 

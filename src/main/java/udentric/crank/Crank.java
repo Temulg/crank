@@ -17,7 +17,8 @@
 package udentric.crank;
 
 import java.util.ArrayList;
-import java.util.ListIterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -60,7 +61,25 @@ public class Crank {
 
 		ValidationSet vs = new ValidationSet(depGraph.iterator());
 
-		return new ActivationSet(vs);
+		ObjectActivator act = activator;
+
+		if (act == null) {
+			act = new StartStopActivator();
+			act.setLogMessageFactory(this::newLogMessage);
+		}
+
+		return new ActivationSet(vs, act, this::newLogMessage);
+	}
+
+	public Crank withObjectActivator(ObjectActivator activator_) {
+		activator = activator_;
+		activator.setLogMessageFactory(this::newLogMessage);
+		return this;
+	}
+
+	public Crank withLoggerContext(Map<String, String> logCtx_) {
+		logCtx.putAll(logCtx_);
+		return this;
 	}
 
 	private void appendExisting(Object[] objs) {
@@ -121,16 +140,23 @@ public class Crank {
 				try {
 					depGraph.addEdge(tu, u);
 				} catch (IllegalArgumentException e) {
-					LOGGER.debug(
-						"Dependency between {} and {} will introduce a cycle",
-						u, tu
-					);
+					LOGGER.debug(() -> newLogMessage(
+						"cyclical dependency detected"
+					).with(
+						"src_unit", tu
+					).with(
+						"dst_unit", u
+					));
 				}
 			}
 		});
 	}
 
-	static final Logger LOGGER = LogManager.getLogger(Crank.class);
+	public LogMessage newLogMessage(String msg) {
+		return new LogMessage(msg, logCtx);
+	}
+
+	static private final Logger LOGGER = LogManager.getLogger();
 
 	private final DirectedAcyclicGraph<
 		Unit, DefaultEdge
@@ -140,4 +166,8 @@ public class Crank {
 	private final ArrayList<Unit> targets = new ArrayList<>();
 	private final OfferingSet offSet = new OfferingSet();
 	private final ArrayList<Requirement> reqSet = new ArrayList<>();
+	private final LinkedHashMap<
+		String, String
+	> logCtx = new LinkedHashMap<>();
+	private ObjectActivator activator;
 }
