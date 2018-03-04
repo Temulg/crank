@@ -27,7 +27,6 @@ import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
 import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
-import org.apache.logging.log4j.message.Message;
 
 public class TestApp {
 	static class A {}
@@ -55,7 +54,7 @@ public class TestApp {
 
 	public static void main(String... args) throws Exception {
 		Logger logger = configLog();
-		Message m = logger.traceEntry("before crank");
+		logger.traceEntry("before crank");
 
 		ActivationSet as = Crank.with(
 			new A(), new B(), new C()
