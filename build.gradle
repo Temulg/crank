@@ -3,6 +3,9 @@ plugins {
 	id 'eclipse'
 }
 
+group 'udentric'
+version '1.0'
+
 repositories {
 	mavenLocal()
 	mavenCentral()
@@ -13,7 +16,6 @@ dependencies {
 	compile 'org.apache.logging.log4j:log4j-core:2.10.0'
 	compile 'com.google.guava:guava:24.0-jre'
 	compile 'org.jgrapht:jgrapht-core:1.1.0'
-	compile 'org.jgrapht:jgrapht-io:1.1.0'
 
 	testCompile 'org.testng:testng:6.13.1'
 }
@@ -27,6 +29,14 @@ eclipse {
 
 compileJava {
 	options.encoding = 'UTF-8'
+}
+
+task sourceJar(type: Jar) {
+	from sourceSets.main.allJava
+}
+
+task docJar(type: Jar, dependsOn: javadoc) {
+	from javadoc.destinationDir
 }
 
 test {
