@@ -1,6 +1,5 @@
 plugins {
 	id 'java'
-	id 'eclipse'
 }
 
 group 'udentric'
@@ -18,13 +17,6 @@ dependencies {
 	compile 'org.jgrapht:jgrapht-core:1.1.0'
 
 	testCompile 'org.testng:testng:6.13.1'
-}
-
-eclipse {
-	classpath {
-		downloadSources = true
-		downloadJavadoc = true
-	}
 }
 
 compileJava {
