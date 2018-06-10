@@ -19,71 +19,63 @@ package udentric.crank;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class StartStopActivator implements ObjectActivator {
-	public StartStopActivator() {
-		lookup = MethodHandles.lookup();
+	@SuppressWarnings("unchecked")
+	public static <T extends Throwable> RuntimeException propagate(
+		Throwable t
+	) throws T {
+		throw (T)t;
 	}
 
 	@Override
-	public void start(Object obj) throws Exception {
-		MethodHandle h;
-
-		try {
-			h = lookup.findVirtual(
-				obj.getClass(), "start", NO_ARGS_METHOD_TYPE
-			);
-		} catch (ReflectiveOperationException e) {
-			LOGGER.debug(() -> msgFactory.apply(
-				"no accessible start method"
-			).with("object", obj));
-			return;
-		}
-
-		try {
-			h.invoke(obj);
-		} catch (Throwable e) {
-			if (e instanceof Error)
-				throw (Error)e;
-
-			LOGGER.error(() -> msgFactory.apply(
-				"exception starting object"
-			).with("object", obj), e);
-			throw (Exception)e;
-		}
-
-		return;
+	public void start(Object obj) {
+		findMethod(obj, "start", NO_ARGS_METHOD_TYPE).ifPresent(h -> {
+			try {
+				h.invoke(obj);
+			} catch (Error e) {
+				throw e;
+			} catch (Throwable e) {
+				LOGGER.error(() -> msgFactory.apply(
+					"exception starting object"
+				).with("object", obj), e);
+				propagate(e);
+			}
+		});
 	}
 
 	@Override
 	public void stop(Object obj) {
-		MethodHandle h = null;
+		findMethod(obj, "stop", NO_ARGS_METHOD_TYPE).ifPresent(h -> {
+			try {
+				h.invoke(obj);
+			} catch (Error e) {
+				throw e;
+			} catch (Throwable e) {
+				LOGGER.error(() -> msgFactory.apply(
+					"exception stopping object"
+				).with("object", obj), e);
+			}
+		});
+	}
 
+	private Optional<MethodHandle> findMethod(
+		Object obj, String method, MethodType sig
+	) {
 		try {
-			h = lookup.findVirtual(
-				obj.getClass(), "stop",
-				MethodType.methodType(void.class)
-			);
+			return Optional.of(lookup.findVirtual(
+				obj.getClass(), method, sig
+			));
 		} catch (ReflectiveOperationException e) {
 			LOGGER.debug(() -> msgFactory.apply(
-				"no accessible stop method"
-			).with("object", obj));
-		}
-
-		try {
-			if (h != null)
-				h.invoke(obj);
-		} catch (Throwable e) {
-			if (e instanceof Error)
-				throw (Error)e;
-
-			LOGGER.error(() -> msgFactory.apply(
-				"exception stopping object"
-			).with("object", obj), e);
+				"method not accessible"
+			).with("object", obj).with("method", method));
+			return Optional.empty();
 		}
 	}
 
@@ -110,6 +102,6 @@ public class StartStopActivator implements ObjectActivator {
 	private static final MethodType NO_ARGS_METHOD_TYPE
 	= MethodType.methodType(void.class);
 
-	private final MethodHandles.Lookup lookup;
+	private final MethodHandles.Lookup lookup = MethodHandles.lookup();
 	private Function<String, LogMessage> msgFactory = LogMessage::new;
 }

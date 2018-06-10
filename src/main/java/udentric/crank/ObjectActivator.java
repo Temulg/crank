@@ -19,7 +19,7 @@ package udentric.crank;
 import java.util.function.Function;
 
 public interface ObjectActivator {
-	void start(Object obj) throws Exception;
+	void start(Object obj);
 
 	void stop(Object obj);
 
